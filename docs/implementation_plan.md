@@ -16,6 +16,12 @@ Date: 2026-04-24 (updated: 2026-04-25)
   - zip이 `/home/data/SitePackages/`에 읽기 전용 마운트 → `node_modules` 없음 → Express 모듈 로드 실패 → 서버 크래시 → 503
   - 해결: `azure-pipelines.yml`에 `npm install --production` 단계 추가 (commit `c15da99`)
   - 이제 빌드 시 `node_modules`가 zip에 포함되어 Run-From-Package 배포 후에도 서버 정상 동작
+- **[2026-04-25] Build #17 → Build #18 파이프라인 개선**:
+  - Build #17 failed: Android SDK 단계 실패로 서버 단계 미실행 (아티팩트 미발행)
+  - 해결 (commit `2a0f814`): Android 단계 `continueOnError: true` + 서버 단계 `condition: always()` 추가
+  - Build #18: partiallySucceeded (Android SDK 부분 성공), 서버 단계 3개 모두 succeeded
+  - Release #9: Build #18 server-drop 아티팩트 기반 배포 → **succeeded**
+  - **최종 확인**: `https://3dt005-hhe8d7frerbef3hb.koreacentral-01.azurewebsites.net/` → **HTTP 200** ✅
 
 ## App Service 구성
 
