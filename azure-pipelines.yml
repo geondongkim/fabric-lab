@@ -140,6 +140,12 @@ steps:
       ArtifactName: 'app-debug-$(Agent.OS)'
     displayName: 'Publish App Artifact'
 
+  # 서버 의존성 설치 (Run-From-Package 방식 배포 시 node_modules가 zip에 포함되어야 함)
+  - script: |
+      cd server
+      npm install --production
+    displayName: 'Install Server Dependencies'
+
   # 서버(Node.js) 코드를 zip으로 묶어 아티팩트 발행 (릴리즈 파이프라인에서 App Service 배포에 사용)
   - task: ArchiveFiles@2
     inputs:
