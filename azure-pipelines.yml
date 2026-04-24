@@ -60,6 +60,14 @@ steps:
           Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
         }
 
+        # ── 라이선스 파일 직접 생성 (자동 수락) ────────────────────────────
+        $licDir = "$sdkRoot\licenses"
+        New-Item -ItemType Directory -Path $licDir -Force | Out-Null
+        Set-Content -Path "$licDir\android-sdk-license"         -Value "`nd56f5187479451eabf01fb78af6dfcb131a6481e`n24333f8a63b6825ea9c5514f83c2829b004d1fee"
+        Set-Content -Path "$licDir\android-sdk-preview-license" -Value "`n84831b9409646a918e30573bab4c9c91346d8abd"
+        Set-Content -Path "$licDir\android-ndk-license"         -Value "`n592519258e7aef9151374fd9ef8e3d06c65a7fe3"
+        Write-Host "Licenses pre-accepted."
+
         # ── 필요한 SDK 패키지 설치 ───────────────────────────────────────────
         $env:JAVA_HOME = $javaDir
         $env:PATH      = "$javaDir\bin;$env:PATH"
