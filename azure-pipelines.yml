@@ -33,35 +33,44 @@ steps:
     env:
       CI: 'true'
 
-  # gitignore된 local.properties 수동 생성 (sdk.dir 경로 주입)
+  # local.properties 생성 + Gradle 빌드 (동일 프로세스로 env var 공유)
   - task: PowerShell@2
     inputs:
       targetType: 'inline'
       script: |
-        $sdkPath = "$(ANDROID_SDK_DIR)" -replace '\\', '/'
-        $localProps = "$(System.DefaultWorkingDirectory)\app\android\local.properties"
-        $content = "sdk.dir=$sdkPath"
-        Write-Host "Writing local.properties to: $localProps"
-        Write-Host "Content: $content"
-        $content | Out-File -FilePath $localProps -Encoding ascii -NoNewline
-        Write-Host "[local.properties contents]"
-        Get-Content $localProps
-    displayName: 'Create android/local.properties'
-    condition: eq(variables['Agent.OS'], 'Windows_NT')
+        $sdkDir  = "$(ANDROID_SDK_DIR)"
+        $javaDir = "$(JAVA_HOME_DIR)"
+        $workDir = "$(System.DefaultWorkingDirectory)"
 
-  # Windows 에이전트용 빌드 단계
-  - task: PowerShell@2
-    inputs:
-      targetType: 'inline'
-      script: |
-        Write-Host "ANDROID_HOME : $env:ANDROID_HOME"
-        Write-Host "JAVA_HOME    : $env:JAVA_HOME"
-        $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-        Set-Location "$(System.DefaultWorkingDirectory)\app\android"
+        # 진단 출력
+        Write-Host "=== Diagnostics ==="
+        Write-Host "Username     : $env:USERNAME"
+        Write-Host "SDK dir      : $sdkDir"
+        Write-Host "SDK exists   : $(Test-Path $sdkDir)"
+        Write-Host "NDK exists   : $(Test-Path "$sdkDir\ndk\27.1.12297006")"
+        Write-Host "Java dir     : $javaDir"
+        Write-Host "Java exists  : $(Test-Path $javaDir)"
+
+        if (-not (Test-Path $sdkDir)) {
+          Write-Error "SDK 디렉토리가 없습니다: $sdkDir"
+          exit 1
+        }
+
+        # local.properties 작성 (Expo prebuild 생성본 덮어쓰기)
+        $sdkDirFwd = $sdkDir -replace '\\', '/'
+        $localProps = "$workDir\app\android\local.properties"
+        "sdk.dir=$sdkDirFwd" | Out-File -FilePath $localProps -Encoding ascii -NoNewline
+        Write-Host "local.properties : $(Get-Content $localProps)"
+
+        # 동일 프로세스에서 env var 설정 후 Gradle 실행
+        $env:ANDROID_HOME     = $sdkDir
+        $env:ANDROID_SDK_ROOT = $sdkDir
+        $env:JAVA_HOME        = $javaDir
+        $env:PATH             = "$javaDir\bin;$env:PATH"
+
+        Write-Host "=== Build Start ==="
+        Set-Location "$workDir\app\android"
         & .\gradlew.bat assembleDebug --no-daemon
-    env:
-      ANDROID_HOME: $(ANDROID_SDK_DIR)
-      JAVA_HOME: $(JAVA_HOME_DIR)
     displayName: 'Build Android Debug APK (Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
