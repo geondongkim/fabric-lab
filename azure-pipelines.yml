@@ -38,10 +38,14 @@ steps:
     inputs:
       targetType: 'inline'
       script: |
-        $sdkPath = "C:/Users/EL035/AppData/Local/Android/Sdk"
-        "sdk.dir=$sdkPath" | Out-File -FilePath "app\android\local.properties" -Encoding ascii -NoNewline
-        Write-Host "[local.properties]"
-        Get-Content "app\android\local.properties"
+        $sdkPath = "$(ANDROID_SDK_DIR)" -replace '\\', '/'
+        $localProps = "$(System.DefaultWorkingDirectory)\app\android\local.properties"
+        $content = "sdk.dir=$sdkPath"
+        Write-Host "Writing local.properties to: $localProps"
+        Write-Host "Content: $content"
+        $content | Out-File -FilePath $localProps -Encoding ascii -NoNewline
+        Write-Host "[local.properties contents]"
+        Get-Content $localProps
     displayName: 'Create android/local.properties'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
@@ -50,13 +54,14 @@ steps:
     inputs:
       targetType: 'inline'
       script: |
-        $env:ANDROID_HOME = "$(ANDROID_SDK_DIR)"
-        $env:JAVA_HOME    = "$(JAVA_HOME_DIR)"
-        $env:PATH         = "$env:JAVA_HOME\bin;$env:PATH"
         Write-Host "ANDROID_HOME : $env:ANDROID_HOME"
         Write-Host "JAVA_HOME    : $env:JAVA_HOME"
-        Set-Location app\android
+        $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+        Set-Location "$(System.DefaultWorkingDirectory)\app\android"
         & .\gradlew.bat assembleDebug --no-daemon
+    env:
+      ANDROID_HOME: $(ANDROID_SDK_DIR)
+      JAVA_HOME: $(JAVA_HOME_DIR)
     displayName: 'Build Android Debug APK (Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
