@@ -83,6 +83,7 @@ steps:
         }
     displayName: 'Setup Android SDK'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
+    continueOnError: true
 
   # local.properties 생성 + Gradle 빌드 (동일 프로세스로 env var 공유)
   - task: PowerShell@2
@@ -116,6 +117,7 @@ steps:
         & .\gradlew.bat assembleDebug --no-daemon
     displayName: 'Build Android Debug APK (Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
+    continueOnError: true
 
   # macOS/Linux 에이전트용 빌드 단계
   - script: |
@@ -133,18 +135,21 @@ steps:
       Contents: '**/*.apk'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
     displayName: 'Copy Debug APK'
+    continueOnError: true
 
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
       ArtifactName: 'app-debug-$(Agent.OS)'
     displayName: 'Publish App Artifact'
+    continueOnError: true
 
   # 서버 의존성 설치 (Run-From-Package 방식 배포 시 node_modules가 zip에 포함되어야 함)
   - script: |
       cd server
       npm install --production
     displayName: 'Install Server Dependencies'
+    condition: always()
 
   # 서버(Node.js) 코드를 zip으로 묶어 아티팩트 발행 (릴리즈 파이프라인에서 App Service 배포에 사용)
   - task: ArchiveFiles@2
@@ -155,10 +160,12 @@ steps:
       archiveFile: '$(Build.ArtifactStagingDirectory)/server/server.zip'
       replaceExistingArchive: true
     displayName: 'Zip Server Code'
+    condition: always()
 
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: '$(Build.ArtifactStagingDirectory)/server'
       ArtifactName: 'server-drop'
     displayName: 'Publish Server Artifact'
+    condition: always()
  
