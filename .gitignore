@@ -57,3 +57,51 @@ Thumbs.db
 
 # 선택 사항: 기타 캐시
 .eslintcache
+
+# ──────────────────────────────────────────
+# React Native / Expo (app/)
+# ──────────────────────────────────────────
+
+# Expo 메타데이터
+app/.expo/
+app/expo-env.d.ts
+app/web-build/
+
+# 네이티브 빌드 폴더 (EAS Build / expo prebuild 시 생성)
+app/android/
+app/ios/
+app/.kotlin/
+
+# Android 빌드 결과물
+*.apk
+*.aab
+*.keystore
+local.properties
+
+# iOS 빌드 결과물
+*.xcworkspace
+*.xcuserstate
+DerivedData/
+*.ipa
+*.mobileprovision
+*.p12
+*.p8
+xcuserdata/
+
+# 서명 키 / 인증서
+*.jks
+*.key
+*.pem
+*.cert
+
+# Metro bundler
+app/.metro-health-check*
+
+# EAS (Expo Application Services)
+.easignore
+
+# React Native 패키지 캐시
+app/.cache/
+
+# TypeScript 빌드
+*.tsbuildinfo
