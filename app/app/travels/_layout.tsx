@@ -6,16 +6,19 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 
-export default function RootLayout() {
+export default function TravelLayout() {
   const colorScheme = useColorScheme();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen
-          name="index"
+          name="[no]"
           options={{
-            title: '남해 관광지',
+            title: ' ',
+            headerShown: true,
+            headerStyle: {backgroundColor: 'white'},
+            headerShadowVisible: false,
           }}
         />
       </Stack>
