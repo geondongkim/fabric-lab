@@ -96,4 +96,20 @@ steps:
       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
       ArtifactName: 'app-debug-$(Agent.OS)'
     displayName: 'Publish App Artifact'
+
+  # 서버(Node.js) 코드를 zip으로 묶어 아티팩트 발행 (릴리즈 파이프라인에서 App Service 배포에 사용)
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: '$(System.DefaultWorkingDirectory)/server'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/server/server.zip'
+      replaceExistingArchive: true
+    displayName: 'Zip Server Code'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)/server'
+      ArtifactName: 'server-drop'
+    displayName: 'Publish Server Artifact'
  
