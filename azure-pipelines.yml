@@ -7,7 +7,7 @@ pool:
   name: 'Default'
 
 variables:
-  ANDROID_SDK_DIR: 'C:\Users\EL035\AppData\Local\Android\Sdk'
+  ANDROID_SDK_DIR: 'C:\Android\Sdk'
   JAVA_HOME_DIR: 'C:\Program Files\Android\Android Studio\jbr'
 
 steps:
@@ -38,6 +38,49 @@ steps:
     inputs:
       targetType: 'inline'
       script: |
+        $sdkRoot    = "$(ANDROID_SDK_DIR)"
+        $javaDir    = "$(JAVA_HOME_DIR)"
+        $cmdLatest  = "$sdkRoot\cmdline-tools\latest"
+        $sdkMgr     = "$cmdLatest\bin\sdkmanager.bat"
+
+        # ── SDK 자동 설치 (에이전트 접근 가능한 C:\Android\Sdk 경로) ──────────
+        if (-not (Test-Path $sdkMgr -ErrorAction SilentlyContinue)) {
+          Write-Host "=== Android SDK not found — installing to $sdkRoot ==="
+          $zip = "$env:TEMP\cmdline-tools.zip"
+          if (-not (Test-Path $zip)) {
+            Write-Host "Downloading command-line tools..."
+            Invoke-WebRequest -Uri "https://dl.google.com/android/repository/commandlinetools-win-9477386_latest.zip" -OutFile $zip -UseBasicParsing
+          }
+          Write-Host "Extracting..."
+          $extract = "$env:TEMP\cmdline-tools-extract"
+          Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive -Path $zip -DestinationPath $extract -Force
+          New-Item -ItemType Directory -Path $cmdLatest -Force | Out-Null
+          Copy-Item -Path "$extract\cmdline-tools\*" -Destination $cmdLatest -Recurse -Force
+          Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        # ── 필요한 SDK 패키지 설치 ───────────────────────────────────────────
+        $env:JAVA_HOME = $javaDir
+        $env:PATH      = "$javaDir\bin;$env:PATH"
+        $packages = @("platform-tools", "platforms;android-36", "build-tools;36.0.0", "ndk;27.1.12297006")
+        foreach ($pkg in $packages) {
+          $installed = & $sdkMgr --list_installed --sdk_root="$sdkRoot" 2>&1 | Select-String ($pkg -replace ";",";")
+          if (-not $installed) {
+            Write-Host "Installing $pkg ..."
+            echo "y" | & $sdkMgr --sdk_root="$sdkRoot" $pkg 2>&1 | Select-Object -Last 3
+          } else {
+            Write-Host "$pkg already installed"
+          }
+        }
+    displayName: 'Setup Android SDK'
+    condition: eq(variables['Agent.OS'], 'Windows_NT')
+
+  # local.properties 생성 + Gradle 빌드 (동일 프로세스로 env var 공유)
+  - task: PowerShell@2
+    inputs:
+      targetType: 'inline'
+      script: |
         $sdkDir  = "$(ANDROID_SDK_DIR)"
         $javaDir = "$(JAVA_HOME_DIR)"
         $workDir = "$(System.DefaultWorkingDirectory)"
@@ -47,11 +90,6 @@ steps:
         Write-Host "Username     : $env:USERNAME"
         Write-Host "SDK dir      : $sdkDir"
         Write-Host "Java dir     : $javaDir"
-        # Test-Path는 권한 오류 발생 가능 → ErrorAction SilentlyContinue 사용
-        $sdkExists  = try { Test-Path $sdkDir  -ErrorAction Stop } catch { $true }
-        $javaExists = try { Test-Path $javaDir -ErrorAction Stop } catch { $true }
-        Write-Host "SDK exists   : $sdkExists"
-        Write-Host "Java exists  : $javaExists"
 
         # local.properties 작성 (Expo prebuild 생성본 덮어쓰기)
         $sdkDirFwd = $sdkDir -replace '\\', '/'
