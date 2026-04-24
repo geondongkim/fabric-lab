@@ -60,6 +60,112 @@ app.get('/', async (req, res) => {
     });
 });
 
+// Helper: Fabric GraphQL 호출 공통 함수
+async function queryGraphQL(query, variables = {}) {
+    if (!config.graphqlEndpoint) {
+        throw Object.assign(new Error("GRAPHQL_ENDPOINT가 설정되지 않았습니다."), { code: 'NO_ENDPOINT' });
+    }
+    const token = await getAccessToken();
+    if (!token) {
+        const missing = getMissingAuthEnvKeys();
+        throw Object.assign(new Error("액세스 토큰을 발급하지 못했습니다."), { code: 'NO_TOKEN', missing });
+    }
+    const response = await fetch(config.graphqlEndpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ query, variables }),
+    });
+    const rawBody = await response.text();
+    let json = null;
+    try { json = rawBody ? JSON.parse(rawBody) : null; } catch {}
+    if (!json) throw Object.assign(new Error("GraphQL 응답이 JSON 형식이 아닙니다."), { code: 'BAD_JSON', status: response.status, preview: rawBody?.slice(0, 400) });
+    if (!response.ok || json?.errors) throw Object.assign(new Error("GraphQL 조회에 실패했습니다."), { code: 'GQL_ERROR', status: response.status, errors: json?.errors ?? [] });
+    return json;
+}
+
+// GET /api/travels - 전체 관광지 목록 (앱 호환 포맷)
+app.get('/api/travels', async (req, res) => {
+    try {
+        const query = `
+            query {
+                namhae_travels {
+                    items {
+                        no
+                        name
+                        address
+                        latitude
+                        longitude
+                        type
+                        type_no
+                        tel
+                        theme
+                        has_parkinglot
+                        parkinglot_count
+                        homepage
+                        description
+                    }
+                }
+            }
+        `;
+        const json = await queryGraphQL(query);
+        const result = json?.data?.namhae_travels;
+        if (!result) {
+            return res.status(502).json({ status: "ERROR", message: "GraphQL 응답 형식이 예상과 다릅니다.", raw: json });
+        }
+        return res.json({ namhae_travels: result });
+    } catch (error) {
+        if (error.code === 'NO_ENDPOINT') return res.status(500).json({ status: "ERROR", message: error.message });
+        if (error.code === 'NO_TOKEN') return res.status(401).json({ status: "ERROR", message: error.message, missingEnvKeys: error.missing });
+        if (error.code === 'BAD_JSON') return res.status(502).json({ status: "ERROR", message: error.message, upstreamStatus: error.status, upstreamBodyPreview: error.preview });
+        if (error.code === 'GQL_ERROR') return res.status(502).json({ status: "ERROR", message: error.message, upstreamStatus: error.status, errors: error.errors });
+        return res.status(500).json({ status: "ERROR", message: "서버 처리 중 오류가 발생했습니다.", detail: error.message });
+    }
+});
+
+// GET /api/travels/:no - 특정 관광지 상세 조회
+app.get('/api/travels/:no', async (req, res) => {
+    try {
+        const no = parseInt(req.params.no, 10);
+        if (isNaN(no)) return res.status(400).json({ status: "ERROR", message: "유효한 번호를 입력해주세요." });
+        const query = `
+            query ($no: Int!) {
+                namhae_travels(filter: { no: { eq: $no } }) {
+                    items {
+                        no
+                        name
+                        address
+                        latitude
+                        longitude
+                        type
+                        type_no
+                        tel
+                        theme
+                        has_parkinglot
+                        parkinglot_count
+                        homepage
+                        description
+                    }
+                }
+            }
+        `;
+        const json = await queryGraphQL(query, { no });
+        const items = json?.data?.namhae_travels?.items;
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(404).json({ status: "ERROR", message: "해당 관광지를 찾을 수 없습니다." });
+        }
+        return res.json(items[0]);
+    } catch (error) {
+        if (error.code === 'NO_ENDPOINT') return res.status(500).json({ status: "ERROR", message: error.message });
+        if (error.code === 'NO_TOKEN') return res.status(401).json({ status: "ERROR", message: error.message, missingEnvKeys: error.missing });
+        if (error.code === 'BAD_JSON') return res.status(502).json({ status: "ERROR", message: error.message, upstreamStatus: error.status, upstreamBodyPreview: error.preview });
+        if (error.code === 'GQL_ERROR') return res.status(502).json({ status: "ERROR", message: error.message, upstreamStatus: error.status, errors: error.errors });
+        return res.status(500).json({ status: "ERROR", message: "서버 처리 중 오류가 발생했습니다.", detail: error.message });
+    }
+});
+
 app.get('/v1/travels', async (req, res) => {
     try {
         const query = `
