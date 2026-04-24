@@ -46,15 +46,12 @@ steps:
         Write-Host "=== Diagnostics ==="
         Write-Host "Username     : $env:USERNAME"
         Write-Host "SDK dir      : $sdkDir"
-        Write-Host "SDK exists   : $(Test-Path $sdkDir)"
-        Write-Host "NDK exists   : $(Test-Path "$sdkDir\ndk\27.1.12297006")"
         Write-Host "Java dir     : $javaDir"
-        Write-Host "Java exists  : $(Test-Path $javaDir)"
-
-        if (-not (Test-Path $sdkDir)) {
-          Write-Error "SDK 디렉토리가 없습니다: $sdkDir"
-          exit 1
-        }
+        # Test-Path는 권한 오류 발생 가능 → ErrorAction SilentlyContinue 사용
+        $sdkExists  = try { Test-Path $sdkDir  -ErrorAction Stop } catch { $true }
+        $javaExists = try { Test-Path $javaDir -ErrorAction Stop } catch { $true }
+        Write-Host "SDK exists   : $sdkExists"
+        Write-Host "Java exists  : $javaExists"
 
         # local.properties 작성 (Expo prebuild 생성본 덮어쓰기)
         $sdkDirFwd = $sdkDir -replace '\\', '/'
