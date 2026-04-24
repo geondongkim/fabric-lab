@@ -1,17 +1,18 @@
 # Implementation Notes
 
-Date: 2026-04-23
+Date: 2026-04-24
 
 ## Completed
 
-- Verified runtime behavior of `server/index.js`.
-- Confirmed startup message is printed in terminal.
-- Confirmed JSON payload is returned through HTTP response.
-- Added request log for `GET /` to make runtime output visibility clear.
-- Removed unused imports and unused config object from server entry file.
+- Confirmed `.env` is ignored and not tracked by Git.
+- Added `start` script in `server/package.json` for deployment/runtime consistency.
+- Hardened `server/index.js` GraphQL route to avoid undefined property crashes.
+- Added safer error diagnostics (`upstreamStatus`, non-JSON guard, missing env keys hint).
+- Removed token echo from root response body.
+- Documented Azure DevOps Release (`3dt005` / `fabric-lab` / `Release-2`) app settings flow in README.
 
 ## Validation
 
-- Server starts successfully on port 3000.
-- `GET /` returns status 200 with expected JSON body.
-- No editor errors in `server/index.js`.
+- `npm start` runs `server/index.js` successfully.
+- `GET /` returns 200 and `tokenReady` state.
+- `/v1/travels` no longer throws uncaught `TypeError`; now returns controlled error JSON when upstream auth fails.

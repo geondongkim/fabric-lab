@@ -19,6 +19,11 @@ app.use(express.json());
 
 let cachedToken = null;
 
+function getMissingAuthEnvKeys() {
+    const requiredKeys = ["TENANT_ID", "CLIENT_ID", "CLIENT_SECRET"];
+    return requiredKeys.filter((key) => !process.env[key]);
+}
+
 async function getAccessToken() {
     if (cachedToken) {
         return cachedToken;
@@ -51,8 +56,7 @@ app.get('/', async (req, res) => {
     res.json({
         status: "OK",
         message: "조회에 성공했습니다.",
-        tokenReady: Boolean(token),
-        ...(token ? { token: token } : {})
+        tokenReady: Boolean(token)
     });
 });
 
@@ -83,9 +87,12 @@ app.get('/v1/travels', async (req, res) => {
 
         const token = await getAccessToken();
         if (!token) {
+            const missingKeys = getMissingAuthEnvKeys();
             return res.status(401).json({
                 status: "ERROR",
-                message: "액세스 토큰을 발급하지 못했습니다."
+                message: "액세스 토큰을 발급하지 못했습니다.",
+                missingEnvKeys: missingKeys,
+                hint: "Azure App Service Application Settings에 TENANT_ID, CLIENT_ID, CLIENT_SECRET 값을 등록하세요."
             });
         }
 
