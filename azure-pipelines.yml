@@ -6,6 +6,10 @@ trigger:
 pool:
   name: 'Default'
 
+variables:
+  ANDROID_SDK_DIR: 'C:\Users\EL035\AppData\Local\Android\Sdk'
+  JAVA_HOME_DIR: 'C:\Program Files\Android\Android Studio\jbr'
+
 steps:
   - checkout: self
     clean: true
@@ -24,13 +28,35 @@ steps:
 
   - script: |
       cd app
-      npx expo prebuild --platform android
+      npx expo prebuild --platform android --no-install
     displayName: 'Expo Prebuild (Generate Android Folder)'
+    env:
+      CI: 'true'
+
+  # gitignore된 local.properties 수동 생성 (sdk.dir 경로 주입)
+  - task: PowerShell@2
+    inputs:
+      targetType: 'inline'
+      script: |
+        $sdkPath = "C:/Users/EL035/AppData/Local/Android/Sdk"
+        "sdk.dir=$sdkPath" | Out-File -FilePath "app\android\local.properties" -Encoding ascii -NoNewline
+        Write-Host "[local.properties]"
+        Get-Content "app\android\local.properties"
+    displayName: 'Create android/local.properties'
+    condition: eq(variables['Agent.OS'], 'Windows_NT')
 
   # Windows 에이전트용 빌드 단계
-  - script: |
-      cd app/android
-      gradlew.bat assembleDebug
+  - task: PowerShell@2
+    inputs:
+      targetType: 'inline'
+      script: |
+        $env:ANDROID_HOME = "$(ANDROID_SDK_DIR)"
+        $env:JAVA_HOME    = "$(JAVA_HOME_DIR)"
+        $env:PATH         = "$env:JAVA_HOME\bin;$env:PATH"
+        Write-Host "ANDROID_HOME : $env:ANDROID_HOME"
+        Write-Host "JAVA_HOME    : $env:JAVA_HOME"
+        Set-Location app\android
+        & .\gradlew.bat assembleDebug --no-daemon
     displayName: 'Build Android Debug APK (Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
@@ -38,9 +64,11 @@ steps:
   - script: |
       cd app/android
       chmod +x gradlew
-      ./gradlew assembleDebug
+      ./gradlew assembleDebug --no-daemon
     displayName: 'Build Android Debug APK (Unix)'
     condition: ne(variables['Agent.OS'], 'Windows_NT')
+    env:
+      ANDROID_HOME: $(ANDROID_SDK_DIR)
 
   - task: CopyFiles@2
     inputs:
